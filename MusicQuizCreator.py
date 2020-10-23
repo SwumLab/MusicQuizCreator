@@ -94,9 +94,9 @@ class MusicQuizCreator:
             list_of_vid_names.append(vid_name)
         return list_of_vid_names
 
-    def fetch_mp4_files(self):
+    def fetch_mp4_files(self, path):
         videos = []
-        with cwd(self.root_path + '/Videos/full_videos/'):
+        with cwd(path):
             for filename in glob.glob('*.mp4'):
                 videos.append(filename)
         return videos
@@ -113,8 +113,8 @@ class MusicQuizCreator:
     def add_timer_and_overlay(self):
         pass
 
-    def cut_videos(self):
-        video_list = self.fetch_mp4_files()
+    def cut_videos(self, countdown_overlay_name, font_name, countdown_overlay_path, font_path):
+        video_list = self.fetch_mp4_files(self.root_path + '/Videos/full_videos/')
         cut_length = 21.5
         with cwd(self.ffmpeg_tools_path):
             for video in video_list:
