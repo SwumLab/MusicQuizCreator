@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup as BS
 import re
 from pytube import YouTube
 import glob
+import subprocess
 
 # Enters the specified directory and goes back to the previous directory once closed
 @contextmanager
@@ -99,12 +100,23 @@ class MusicQuizCreator:
                 videos.append(filename)
         return videos
 
-    def generate_trim_start(self, video):
+    def get_video_length(self, filename, video_read_path):
+        with cwd(self.ffmpeg_tools_path):
+            result = subprocess.run(["ffprobe.exe", "-v", "error", "-show_entries",
+                                     "format=duration", "-of",
+                                     "default=noprint_wrappers=1:nokey=1", video_read_path + filename],
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.STDOUT)
+        return float(result.stdout)
+    def generate_trim_start(self, video, duration):
         pass
     def add_timer_and_overlay(self):
         pass
     def cut_videos(self):
-        print(self.fetch_mp4_files())
+        video_list = self.fetch_mp4_files()
+        for video in video_list:
+            duration = self.get_video_length(video, self.root_path + '/Videos/full_videos/')
+
 
 # Test
 #  Parser, to cut the downloaded videos
@@ -115,5 +127,5 @@ if __name__ == '__main__':
     ffmpeg_dir = os.getcwd() + '/ffmpeg_folder'
 
     MQC = MusicQuizCreator(ffmpeg_tools_path=ffmpeg_dir)
-    MQC.download_youtube_video(txt_name='youtube_download_list.txt', txt_path=os.getcwd())
-    #MQC.cut_videos()
+    #MQC.download_youtube_video(txt_name='youtube_download_list.txt', txt_path=os.getcwd())
+    MQC.cut_videos()
