@@ -7,6 +7,7 @@ import re
 from pytube import YouTube
 import glob
 import subprocess
+import random
 
 # Enters the specified directory and goes back to the previous directory once closed
 @contextmanager
@@ -108,15 +109,26 @@ class MusicQuizCreator:
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT)
         return float(result.stdout)
-    def generate_trim_start(self, video, duration):
-        pass
+
     def add_timer_and_overlay(self):
         pass
+
     def cut_videos(self):
         video_list = self.fetch_mp4_files()
-        for video in video_list:
-            duration = self.get_video_length(video, self.root_path + '/Videos/full_videos/')
-
+        cut_length = 21.5
+        with cwd(self.ffmpeg_tools_path):
+            for video in video_list:
+                vid_duration = self.get_video_length(video, self.root_path + '/Videos/full_videos/')
+                trim_start = random.uniform(cut_length, vid_duration)
+                if self.check_if_file_exists(filename=self.root_path + '/Videos/full_videos/' + video):
+                    print(f'Video: {video} has already been trimmed. Skipping..')
+                    continue
+                p = subprocess.call(['ffmpeg.exe',
+                                     '-i', self.root_path + '/Videos/full_videos/' + video,
+                                     '-crf', '18',
+                                     '-ss', str(trim_start),
+                                     '-t', str(cut_length),
+                                     self.root_path + '/Videos/cut_videos/' + video])
 
 # Test
 #  Parser, to cut the downloaded videos
