@@ -13,6 +13,7 @@ import imageio
 import moviepy
 from moviepy.editor import *
 import moviepy.audio.fx.all as afx
+import numpy as np
 
 # Enters the specified directory and goes back to the previous directory once closed
 @contextmanager
@@ -218,13 +219,26 @@ class MusicQuizCreator:
         if overlay_resized:
             os.remove(self.countdown_overlay_path + '/' + self.countdown_overlay_name)
 
+    def create_list_of_unique_numbers(self, n_total, n_pull):
+        possible_numbers = np.arange(0, n_total)
+        output_numbers = []
+
+        i = 0
+        while i <= n_pull:
+            chosen_n = random.randint(0, possible_numbers.shape[0] - 1)
+            output_numbers.append(possible_numbers[chosen_n])
+            possible_numbers = np.delete(possible_numbers, chosen_n)  # Removes per index
+            i += 1
+        return output_numbers
+
     def concat_videos(self, n_concatenated):
         cut_video_path = self.root_path + '/Videos/cut_videos'
         list_of_videos = self.fetch_mp4_files(cut_video_path)
+        random_pull = self.create_list_of_unique_numbers(n_total=len(list_of_videos), n_pull=n_concatenated-1)
         with cwd(cut_video_path):
             clips = []
-            for vid in list_of_videos:
-                clip = VideoFileClip(vid)
+            for video_index in random_pull:
+                clip = VideoFileClip(list_of_videos[video_index])
                 clip = (clip.fx(afx.audio_fadein, duration=1))
                 clip = (clip.fx(afx.audio_fadeout, duration=1))
                 clips.append(clip)
