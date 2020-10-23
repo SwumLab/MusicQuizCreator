@@ -161,6 +161,7 @@ class MusicQuizCreator:
                 if self.check_if_file_exists(filename=self.root_path + '/Videos/cut_videos/' + video):
                     print(f'Video: {video} has already been trimmed. Skipping..')
                     continue
+                # First cut the video to 21 seconds
                 p1 = subprocess.call(['ffmpeg.exe',
                                       '-y',
                                       '-i', self.root_path + '/Videos/full_videos/' + video,
@@ -180,6 +181,7 @@ class MusicQuizCreator:
                 if self.check_if_file_exists(self.root_path + '/Videos/cut_videos/resizedTEMP' + video):
                     p2_vid_input = self.root_path + '/Videos/cut_videos/resizedTEMP' + video
 
+                # Add overlay to the first 10 seconds
                 p2 = subprocess.call(["ffmpeg.exe",
                                       "-i", p2_vid_input,
                                       "-i", f'{self.countdown_overlay_path}/{self.countdown_overlay_name}',
@@ -192,14 +194,15 @@ class MusicQuizCreator:
                                       '-q:a', '1000',
                                       self.root_path + '/Videos/cut_videos/withvid' + video])
 
-
+                # Add text result on top of video after the first 10s
                 p3 = subprocess.call(["ffmpeg.exe",
                                       "-i",self.root_path + '/Videos/cut_videos/withvid' + video,
                                       "-vf", result_txt,
                                       "-codec:a", 'copy',
                                       self.root_path + '/Videos/cut_videos/' + video])
 
-                for del_name in ['TEMP'+video, 'withvid'+video,'resizedTEMP'+video]:
+                # Delete all the temporary files
+                for del_name in ['TEMP'+video, 'withvid'+video, 'resizedTEMP'+video]:
                     try:
                         os.remove(self.root_path+'/Videos/cut_videos/'+del_name)
                     except OSError:
