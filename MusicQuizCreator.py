@@ -71,7 +71,7 @@ class MusicQuizCreator:
                         ytube_url = self.youtube_first_result(video_name)
                         yt = YouTube(ytube_url)
                         # Only 720 and below, otherwise you have to DL audio and video seperately and merge them
-                        stream = yt.streams.get_highest_resolution()
+                        stream = yt.streams.filter(file_extension='mp4').get_highest_resolution()
                         print(f'Downloading: {video_name}..')
                         stream.download(filename=video_name)
                         break
@@ -115,5 +115,5 @@ if __name__ == '__main__':
     ffmpeg_dir = os.getcwd() + '/ffmpeg_folder'
 
     MQC = MusicQuizCreator(ffmpeg_tools_path=ffmpeg_dir)
-    #MQC.download_youtube_video(txt_name='youtube_download_list.txt', txt_path=os.getcwd())
-    MQC.cut_videos()
+    MQC.download_youtube_video(txt_name='youtube_download_list.txt', txt_path=os.getcwd())
+    #MQC.cut_videos()
