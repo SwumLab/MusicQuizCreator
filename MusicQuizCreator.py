@@ -137,7 +137,9 @@ class MusicQuizCreator:
 
 if __name__ == '__main__':
     ffmpeg_dir = os.getcwd() + '/ffmpeg_folder'
+    overlay_font_dir = os.getcwd() + '/font_and_overlay'
 
     MQC = MusicQuizCreator(ffmpeg_tools_path=ffmpeg_dir)
     #MQC.download_youtube_video(txt_name='youtube_download_list.txt', txt_path=os.getcwd())
-    MQC.cut_videos()
+    MQC.cut_videos(countdown_overlay_name='Countdown.mp4', font_name='myfont.ttf',
+                   countdown_overlay_path=overlay_font_dir, font_path=overlay_font_dir)
