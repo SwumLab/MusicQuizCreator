@@ -9,6 +9,10 @@ import glob
 import subprocess
 import random
 import cv2
+import imageio
+import moviepy
+from moviepy.editor import *
+import moviepy.audio.fx.all as afx
 
 # Enters the specified directory and goes back to the previous directory once closed
 @contextmanager
@@ -138,6 +142,7 @@ class MusicQuizCreator:
                                  path+'resized'+video])
 
     def cut_videos(self, countdown_overlay_name, font_name, countdown_overlay_path, font_path):
+        overlay_resized = False
         scaling = "[in]scale=iw*min(1280/iw\,720/ih):ih*min(1280/iw\,720/ih)[scaled]; " \
                   "[scaled]pad=1280:720:(1280-iw*min(1280/iw\,720/ih))/2:(720-ih*min(1280/iw\,720/ih))/2[padded]; " \
                   "[padded]setsar=1:1[out]"
@@ -153,6 +158,7 @@ class MusicQuizCreator:
                 self.scale_video_width_height(video=self.countdown_overlay_name, path=countdown_overlay_path + '/',
                                               scaling=scaling)
                 self.countdown_overlay_name = 'resized'+self.countdown_overlay_name
+                overlay_resized = True
 
             for video in video_list:
                 vid_duration = self.get_video_length(video, self.root_path + '/Videos/full_videos/')
@@ -161,6 +167,7 @@ class MusicQuizCreator:
                 if self.check_if_file_exists(filename=self.root_path + '/Videos/cut_videos/' + video):
                     print(f'Video: {video} has already been trimmed. Skipping..')
                     continue
+
                 # First cut the video to 21 seconds
                 p1 = subprocess.call(['ffmpeg.exe',
                                       '-y',
@@ -207,11 +214,26 @@ class MusicQuizCreator:
                         os.remove(self.root_path+'/Videos/cut_videos/'+del_name)
                     except OSError:
                         pass
-        try:
-            os.remove(self.countdown_overlay_path + '/' + self.countdown_overlay_name)
-        except OSError:
-            pass
 
+        if overlay_resized:
+            os.remove(self.countdown_overlay_path + '/' + self.countdown_overlay_name)
+
+    def concat_videos(self, n_concatenated):
+        cut_video_path = self.root_path + '/Videos/cut_videos'
+        list_of_videos = self.fetch_mp4_files(cut_video_path)
+        with cwd(cut_video_path):
+            clips = []
+            for vid in list_of_videos:
+                clip = VideoFileClip(vid)
+                clip = (clip.fx(afx.audio_fadein, duration=1))
+                clip = (clip.fx(afx.audio_fadeout, duration=1))
+                clips.append(clip)
+        result = concatenate_videoclips(clips)
+        with cwd(path=self.root_path + '/Videos/complete_videos'):
+            unique_name = len(self.fetch_mp4_files(path=os.getcwd()))
+            if unique_name is None:
+                unique_name = 0
+            result.write_videofile(str(unique_name+1) + "_MusicQuiz.mp4", audio_bitrate='3000k', preset='veryfast')
 
 
 if __name__ == '__main__':
@@ -220,5 +242,6 @@ if __name__ == '__main__':
 
     MQC = MusicQuizCreator(ffmpeg_tools_path=ffmpeg_dir)
     MQC.download_youtube_video(txt_name='youtube_download_list.txt', txt_path=os.getcwd())
-    MQC.cut_videos(countdown_overlay_name='Countdown1.mp4', font_name='myfont.ttf',
+    MQC.cut_videos(countdown_overlay_name='Countdown.mp4', font_name='myfont.ttf',
                    countdown_overlay_path=overlay_font_dir, font_path=overlay_font_dir)
+    MQC.concat_videos(n_concatenated=2)
