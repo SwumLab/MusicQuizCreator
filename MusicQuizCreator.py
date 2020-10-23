@@ -8,6 +8,7 @@ from pytube import YouTube
 import glob
 import subprocess
 import random
+import cv2
 
 # Enters the specified directory and goes back to the previous directory once closed
 @contextmanager
@@ -110,36 +111,111 @@ class MusicQuizCreator:
                                     stderr=subprocess.STDOUT)
         return float(result.stdout)
 
-    def add_timer_and_overlay(self):
-        pass
+    def timer_text_overlay_ffmpeg_input_strings(self, video_name):
+        # Crude way to ensure text can fit on screen
+        if len(video_name) > 100:
+            font_size = '16'
+        elif len(video_name) > 70:
+            font_size = '22'
+        else:
+            font_size = '32'
+
+        video_fade = "[0:0][1:0]overlay=enable='between(t,0,10)'[out]"
+        result_txt = f"drawtext=enable='between(t,10,21)': fontfile={self.font_path}/{self.font_name}: " \
+                     f"text={video_name}: fontcolor=white: fontsize={font_size}: box=1: boxcolor=black@0.5: " \
+                     f"boxborderw=5: x=50: y=h-text_h-50"
+        return video_fade, result_txt
+
+    def get_height_width(self, filename):
+        vid = cv2.VideoCapture(filename)
+        return vid.get(cv2.CAP_PROP_FRAME_WIDTH), vid.get(cv2.CAP_PROP_FRAME_HEIGHT)
+
+    def scale_video_width_height(self, video, path, scaling):
+        scale = subprocess.call(["ffmpeg.exe",
+                                 "-i", path+video,
+                                 '-vf', scaling,
+                                 '-c:a', 'copy',
+                                 path+'resized'+video])
 
     def cut_videos(self, countdown_overlay_name, font_name, countdown_overlay_path, font_path):
+        scaling = "[in]scale=iw*min(1280/iw\,720/ih):ih*min(1280/iw\,720/ih)[scaled]; " \
+                  "[scaled]pad=1280:720:(1280-iw*min(1280/iw\,720/ih))/2:(720-ih*min(1280/iw\,720/ih))/2[padded]; " \
+                  "[padded]setsar=1:1[out]"
+        self.countdown_overlay_name = countdown_overlay_name
+        self.font_name = font_name
+        self.countdown_overlay_path = countdown_overlay_path
+        self.font_path = font_path
         video_list = self.fetch_mp4_files(self.root_path + '/Videos/full_videos/')
-        cut_length = 21.5
+        cut_length = 21.0
         with cwd(self.ffmpeg_tools_path):
+            o_w, o_h = self.get_height_width(f'{self.countdown_overlay_path}/{self.countdown_overlay_name}')
+            if o_w != 1280 or o_h != 720:
+                self.scale_video_width_height(video=self.countdown_overlay_name, path=countdown_overlay_path + '/',
+                                              scaling=scaling)
+                self.countdown_overlay_name = 'resized'+self.countdown_overlay_name
+
             for video in video_list:
                 vid_duration = self.get_video_length(video, self.root_path + '/Videos/full_videos/')
                 trim_start = random.uniform(cut_length, vid_duration)
-                if self.check_if_file_exists(filename=self.root_path + '/Videos/full_videos/' + video):
+
+                if self.check_if_file_exists(filename=self.root_path + '/Videos/cut_videos/' + video):
                     print(f'Video: {video} has already been trimmed. Skipping..')
                     continue
-                p = subprocess.call(['ffmpeg.exe',
-                                     '-i', self.root_path + '/Videos/full_videos/' + video,
-                                     '-crf', '18',
-                                     '-ss', str(trim_start),
-                                     '-t', str(cut_length),
-                                     self.root_path + '/Videos/cut_videos/' + video])
+                p1 = subprocess.call(['ffmpeg.exe',
+                                      '-y',
+                                      '-i', self.root_path + '/Videos/full_videos/' + video,
+                                      '-crf', '18',
+                                      '-ss', str(trim_start),
+                                      '-t', str(cut_length),
+                                      self.root_path + '/Videos/cut_videos/TEMP' + video])
+                p2_vid_input = self.root_path + '/Videos/cut_videos/TEMP' + video
 
-# Test
-#  Parser, to cut the downloaded videos
-#  Add the overlay and text with result
-#  Sitch videos together
+                video_fade, result_txt = self.timer_text_overlay_ffmpeg_input_strings(video.split('.mp4')[0])
+
+                v_w, v_h = self.get_height_width(self.root_path + '/Videos/cut_videos/TEMP' + video)
+                if v_w != 1280 or v_h != 720:
+                    self.scale_video_width_height(video='TEMP'+video, path=self.root_path + '/Videos/cut_videos/',
+                                                  scaling=scaling)
+
+                if self.check_if_file_exists(self.root_path + '/Videos/cut_videos/resizedTEMP' + video):
+                    p2_vid_input = self.root_path + '/Videos/cut_videos/resizedTEMP' + video
+
+                p2 = subprocess.call(["ffmpeg.exe",
+                                      "-i", p2_vid_input,
+                                      "-i", f'{self.countdown_overlay_path}/{self.countdown_overlay_name}',
+                                      "-filter_complex", video_fade,
+                                      "-shortest",
+                                      "-map", "[out]",
+                                      '-map', '0:1',
+                                      '-crf', '18',
+                                      '-c:a', 'aac',
+                                      '-q:a', '1000',
+                                      self.root_path + '/Videos/cut_videos/withvid' + video])
+
+
+                p3 = subprocess.call(["ffmpeg.exe",
+                                      "-i",self.root_path + '/Videos/cut_videos/withvid' + video,
+                                      "-vf", result_txt,
+                                      "-codec:a", 'copy',
+                                      self.root_path + '/Videos/cut_videos/' + video])
+
+                for del_name in ['TEMP'+video, 'withvid'+video,'resizedTEMP'+video]:
+                    try:
+                        os.remove(self.root_path+'/Videos/cut_videos/'+del_name)
+                    except OSError:
+                        pass
+        try:
+            os.remove(self.countdown_overlay_path + '/' + self.countdown_overlay_name)
+        except OSError:
+            pass
+
+
 
 if __name__ == '__main__':
     ffmpeg_dir = os.getcwd() + '/ffmpeg_folder'
     overlay_font_dir = os.getcwd() + '/font_and_overlay'
 
     MQC = MusicQuizCreator(ffmpeg_tools_path=ffmpeg_dir)
-    #MQC.download_youtube_video(txt_name='youtube_download_list.txt', txt_path=os.getcwd())
-    MQC.cut_videos(countdown_overlay_name='Countdown.mp4', font_name='myfont.ttf',
+    MQC.download_youtube_video(txt_name='youtube_download_list.txt', txt_path=os.getcwd())
+    MQC.cut_videos(countdown_overlay_name='Countdown1.mp4', font_name='myfont.ttf',
                    countdown_overlay_path=overlay_font_dir, font_path=overlay_font_dir)
