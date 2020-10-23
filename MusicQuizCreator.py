@@ -5,6 +5,7 @@ import urllib.request
 from bs4 import BeautifulSoup as BS
 import re
 from pytube import YouTube
+import glob
 
 # Enters the specified directory and goes back to the previous directory once closed
 @contextmanager
@@ -91,12 +92,19 @@ class MusicQuizCreator:
             list_of_vid_names.append(vid_name)
         return list_of_vid_names
 
+    def fetch_mp4_files(self):
+        videos = []
+        with cwd(self.root_path + '/Videos/full_videos/'):
+            for filename in glob.glob('*.mp4'):
+                videos.append(filename)
+        return videos
+
     def generate_trim_start(self, video):
         pass
     def add_timer_and_overlay(self):
         pass
     def cut_videos(self):
-        pass
+        print(self.fetch_mp4_files())
 
 # Test
 #  Parser, to cut the downloaded videos
@@ -107,4 +115,5 @@ if __name__ == '__main__':
     ffmpeg_dir = os.getcwd() + '/ffmpeg_folder'
 
     MQC = MusicQuizCreator(ffmpeg_tools_path=ffmpeg_dir)
-    MQC.download_youtube_video(txt_name='youtube_download_list.txt', txt_path=os.getcwd())
+    #MQC.download_youtube_video(txt_name='youtube_download_list.txt', txt_path=os.getcwd())
+    MQC.cut_videos()
